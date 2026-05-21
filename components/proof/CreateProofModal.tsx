@@ -1,24 +1,23 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, Upload, FileVideo, ImageIcon } from "lucide-react";
+import { X, FileVideo, ImageIcon } from "lucide-react";
 import { CATEGORY_GROUPS } from "@/types";
 import { categoryLabel, groupLabel } from "@/lib/utils";
 import Button from "@/components/ui/Button";
+import { useAuth } from "@/hooks/useAuth";
 
 interface CreateProofModalProps {
     isOpen: boolean;
     onClose: () => void;
 }
 
-export default function CreateProofModal({
-    isOpen,
-    onClose,
-}: CreateProofModalProps) {
+export default function CreateProofModal({ isOpen, onClose }: CreateProofModalProps) {
+    const { walletAddress } = useAuth();
+
     const [title, setTitle] = useState("");
     const [category, setCategory] = useState("");
     const [description, setDescription] = useState("");
-
     const [file, setFile] = useState<File | null>(null);
     const [preview, setPreview] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
@@ -31,17 +30,13 @@ export default function CreateProofModal({
 
     if (!isOpen) return null;
 
-    const isVideo = file?.type.startsWith("video/");
-
     function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
         const selected = e.target.files?.[0];
         if (!selected) return;
-
         setFile(selected);
         setUploadError(null);
         setMediaUrl(null);
         setUploadProgress(0);
-
         if (selected.type.startsWith("image/")) {
             const reader = new FileReader();
             reader.onload = () => setPreview(reader.result as string);
@@ -53,34 +48,27 @@ export default function CreateProofModal({
 
     async function handleUpload(): Promise<string | null> {
         if (!file) return null;
-
         setUploading(true);
         setUploadError(null);
         setUploadProgress(10);
-
         try {
-            // Step 1: Get signed upload params from your API
             const sigRes = await fetch("/api/upload", { method: "POST" });
             if (!sigRes.ok) throw new Error("Failed to get upload signature");
             const { signature, timestamp, cloudName, apiKey } = await sigRes.json();
-
             setUploadProgress(30);
 
-            // Step 2: Upload directly to Cloudinary using the signature
             const formData = new FormData();
             formData.append("file", file);
             formData.append("signature", signature);
             formData.append("timestamp", timestamp.toString());
             formData.append("api_key", apiKey);
             formData.append("folder", "prooflayer");
-
             setUploadProgress(50);
 
             const uploadRes = await fetch(
                 `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
                 { method: "POST", body: formData }
             );
-
             setUploadProgress(90);
 
             if (!uploadRes.ok) {
@@ -105,20 +93,19 @@ export default function CreateProofModal({
             setUploadError("Title and category are required");
             return;
         }
+        if (!walletAddress) {
+            setUploadError("Wallet not connected");
+            return;
+        }
 
         setSubmitting(true);
         setUploadError(null);
 
         try {
             let url = mediaUrl;
-
-            // Upload file if not already uploaded
             if (file && !mediaUrl) {
                 url = await handleUpload();
-                if (!url) {
-                    setSubmitting(false);
-                    return;
-                }
+                if (!url) { setSubmitting(false); return; }
             }
 
             const res = await fetch("/api/proofs", {
@@ -128,13 +115,13 @@ export default function CreateProofModal({
                     title,
                     category,
                     description,
-                    media_url: url,
+                    mediaUrls: url ? [url] : [],
+                    creator: walletAddress,
                 }),
             });
 
             if (!res.ok) throw new Error("Failed to create proof");
 
-            // Reset and close
             setTitle("");
             setCategory("");
             setDescription("");
@@ -152,30 +139,19 @@ export default function CreateProofModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div
-                className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-                onClick={onClose}
-            />
+            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-            {/* Modal */}
             <div className="relative z-10 w-full max-w-lg mx-4 bg-[#0F0F17] border border-[#2A2A38] rounded-2xl p-6 max-h-[90vh] overflow-y-auto">
 
-                {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <h2 className="text-white font-bold text-lg">Create Proof</h2>
-                    <button
-                        onClick={onClose}
-                        className="text-[#5C5A72] hover:text-white transition-colors"
-                    >
+                    <button onClick={onClose} className="text-[#5C5A72] hover:text-white transition-colors">
                         <X className="w-5 h-5" />
                     </button>
                 </div>
 
-                {/* Form */}
                 <div className="flex flex-col gap-4">
 
-                    {/* Title */}
                     <div>
                         <label className="text-sm text-[#A09EB8] mb-1.5 block">Title</label>
                         <input
@@ -187,7 +163,6 @@ export default function CreateProofModal({
                         />
                     </div>
 
-                    {/* Category */}
                     <div>
                         <label className="text-sm text-[#A09EB8] mb-1.5 block">Category</label>
                         <select
@@ -199,16 +174,13 @@ export default function CreateProofModal({
                             {Object.entries(CATEGORY_GROUPS).map(([group, categories]) => (
                                 <optgroup key={group} label={groupLabel(group as any)}>
                                     {categories.map((cat) => (
-                                        <option key={cat} value={cat}>
-                                            {categoryLabel(cat)}
-                                        </option>
+                                        <option key={cat} value={cat}>{categoryLabel(cat)}</option>
                                     ))}
                                 </optgroup>
                             ))}
                         </select>
                     </div>
 
-                    {/* Description */}
                     <div>
                         <label className="text-sm text-[#A09EB8] mb-1.5 block">Description</label>
                         <textarea
@@ -220,10 +192,8 @@ export default function CreateProofModal({
                         />
                     </div>
 
-                    {/* Media Upload */}
                     <div>
                         <label className="text-sm text-[#A09EB8] mb-1.5 block">Media</label>
-
                         <input
                             ref={fileInputRef}
                             type="file"
@@ -232,7 +202,6 @@ export default function CreateProofModal({
                             className="hidden"
                         />
 
-                        {/* Preview or Drop zone */}
                         {file ? (
                             <div className="relative rounded-lg overflow-hidden border border-[#2A2A38]">
                                 {preview ? (
@@ -243,32 +212,17 @@ export default function CreateProofModal({
                                         <span className="text-sm text-white truncate">{file.name}</span>
                                     </div>
                                 )}
-
-                                {/* Remove button */}
                                 <button
-                                    onClick={() => {
-                                        setFile(null);
-                                        setPreview(null);
-                                        setMediaUrl(null);
-                                        setUploadProgress(0);
-                                        setUploadError(null);
-                                    }}
+                                    onClick={() => { setFile(null); setPreview(null); setMediaUrl(null); setUploadProgress(0); setUploadError(null); }}
                                     className="absolute top-2 right-2 bg-black/60 rounded-full p-1 text-white hover:bg-black"
                                 >
                                     <X className="w-4 h-4" />
                                 </button>
-
-                                {/* Upload progress bar */}
                                 {uploading && (
                                     <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#2A2A38]">
-                                        <div
-                                            className="h-full bg-[#6EE7B7] transition-all duration-300"
-                                            style={{ width: `${uploadProgress}%` }}
-                                        />
+                                        <div className="h-full bg-[#6EE7B7] transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
                                     </div>
                                 )}
-
-                                {/* Success indicator */}
                                 {mediaUrl && (
                                     <div className="absolute bottom-2 left-2 bg-[#6EE7B7]/20 border border-[#6EE7B7] rounded px-2 py-0.5 text-xs text-[#6EE7B7]">
                                         ✓ Uploaded
@@ -285,25 +239,17 @@ export default function CreateProofModal({
                                         <ImageIcon className="w-6 h-6" />
                                         <FileVideo className="w-6 h-6" />
                                     </div>
-                                    <span className="text-sm text-[#5C5A72] group-hover:text-[#A09EB8] transition-colors">
-                                        Click to upload photos or videos
-                                    </span>
+                                    <span className="text-sm text-[#5C5A72] group-hover:text-[#A09EB8] transition-colors">Click to upload photos or videos</span>
                                     <span className="text-xs text-[#5C5A72]">PNG, JPG, WEBP, MP4 up to 50MB</span>
                                 </div>
                             </div>
                         )}
                     </div>
 
-                    {/* Error */}
-                    {uploadError && (
-                        <p className="text-red-400 text-sm">{uploadError}</p>
-                    )}
+                    {uploadError && <p className="text-red-400 text-sm">{uploadError}</p>}
 
-                    {/* Actions */}
                     <div className="flex gap-3 mt-2">
-                        <Button variant="outline" className="flex-1" onClick={onClose}>
-                            Cancel
-                        </Button>
+                        <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
                         <Button
                             variant="primary"
                             className="flex-1"
