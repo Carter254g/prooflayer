@@ -11,23 +11,28 @@ export async function POST() {
     try {
         const timestamp = Math.round(new Date().getTime() / 1000);
 
+        const paramsToSign = {
+            timestamp,
+            folder: "prooflayer",
+        };
+
         const signature = cloudinary.utils.api_sign_request(
-            {
-                timestamp,
-                folder: "prooflayer",
-                allowed_formats: "jpg,jpeg,png,webp,mp4,mov",
-                max_file_size: 52428800,
-            },
+            paramsToSign,
             process.env.CLOUDINARY_API_SECRET!
         );
 
-        return NextResponse.json({
+        const response = {
             signature,
             timestamp,
             cloudName: process.env.CLOUDINARY_CLOUD_NAME,
             apiKey: process.env.CLOUDINARY_API_KEY,
-        });
+        };
+
+        console.log("Upload signature response:", response);
+
+        return NextResponse.json(response);
     } catch (error) {
+        console.error("Signature error:", error);
         return NextResponse.json(
             { error: "Failed to generate upload signature" },
             { status: 500 }

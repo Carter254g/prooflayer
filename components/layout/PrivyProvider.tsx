@@ -15,7 +15,7 @@ export default function PrivyClientProvider({
                 appearance: {
                     theme: "dark",
                     accentColor: "#6EE7B7",
-                    logo: "https://your-logo-url.com/logo.png",
+                
                 },
                 embeddedWallets: {
                     createOnLogin: "users-without-wallets",

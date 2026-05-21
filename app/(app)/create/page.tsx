@@ -78,6 +78,7 @@ export default function CreatePage() {
   }
 
   async function handleSubmit() {
+    console.log("wallet:", walletAddress);
     if (!authenticated) {
       login();
       return;
