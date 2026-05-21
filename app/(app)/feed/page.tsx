@@ -1,11 +1,17 @@
 import PageWrapper from "@/components/layout/PageWrapper";
 import FeedCard from "@/components/proof/FeedCard";
+import { getProofs } from "@/lib/supabase/api";
 import { MOCK_PROOFS } from "@/lib/mock-data";
 
-export default function FeedPage() {
+export default async function FeedPage() {
+  let proofs = await getProofs();
+
+  if (proofs.length === 0) {
+    proofs = MOCK_PROOFS;
+  }
+
   return (
     <PageWrapper>
-      {/* Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-white">Proof Feed</h1>
         <p className="text-[#A09EB8] text-sm mt-1">
@@ -13,11 +19,12 @@ export default function FeedPage() {
         </p>
       </div>
 
-      {/* Proof Cards */}
       <div className="flex flex-col gap-4">
-        {MOCK_PROOFS.map((proof) => (
-          <FeedCard key={proof.id} proof={proof} />
-        ))}
+        {proofs.length === 0 ? (
+          <p className="text-[#5C5A72] text-sm">No proofs yet. Be the first.</p>
+        ) : (
+          proofs.map((proof) => <FeedCard key={proof.id} proof={proof} />)
+        )}
       </div>
     </PageWrapper>
   );
