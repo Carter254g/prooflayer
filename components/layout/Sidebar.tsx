@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { ShieldCheck, Rss, PlusCircle, User, LogOut } from "lucide-react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/hooks/useAuth";
 
 const NAV_ITEMS = [
     { label: "Feed", href: "/feed", icon: Rss },
@@ -10,12 +10,8 @@ const NAV_ITEMS = [
 ];
 
 export default function Sidebar() {
-    const { ready, authenticated, user, login, logout } = usePrivy();
+    const { ready, authenticated, user, walletAddress, login, logout } = useAuth();
 
-    const walletAddress =
-        user?.wallet?.address ?? user?.linkedAccounts?.find(
-            (a) => a.type === "wallet"
-        )?.address;
 
     const shortAddress = walletAddress
         ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}`

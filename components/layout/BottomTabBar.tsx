@@ -2,13 +2,10 @@
 
 import Link from "next/link";
 import { Rss, PlusCircle, User, LogIn } from "lucide-react";
-import { usePrivy } from "@privy-io/react-auth";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function BottomTabBar() {
-    const { authenticated, user, login } = usePrivy();
-
-    const walletAddress = user?.wallet?.address;
-
+    const { authenticated, walletAddress, login } = useAuth();
     return (
         <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0A0A0F] border-t border-[#2A2A38] px-4 py-2">
             <div className="flex items-center justify-around">
