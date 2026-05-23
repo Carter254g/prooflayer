@@ -75,11 +75,15 @@ export async function getProofsByWallet(wallet: string): Promise<Proof[]> {
 export async function getProofById(id: string): Promise<Proof | null> {
     const supabase = await createClient();
 
+    console.log("getProofById called with id:", id);
+
     const { data, error } = await supabase
         .from("proofs")
         .select("*, users!creator(*)")
         .eq("id", id)
         .single();
+
+    console.log("getProofById result:", { data, error });
 
     if (error || !data) return null;
 

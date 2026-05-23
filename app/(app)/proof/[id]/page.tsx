@@ -3,16 +3,18 @@ import { getProofById } from "@/lib/supabase/api";
 import { MOCK_PROOFS } from "@/lib/mock-data";
 import { categoryLabel, timeAgo, shortWallet } from "@/lib/utils";
 import { ShieldCheck, ExternalLink } from "lucide-react";
+import VerifyButton from "@/components/proof/VerifyButton";
 
 export default async function ProofPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;  // ← must be Promise
 }) {
-  let proof = await getProofById(params.id);
+  const { id } = await params;  // ← must await
+  let proof = await getProofById(id);
 
   if (!proof) {
-    proof = MOCK_PROOFS.find((p) => p.id === params.id) ?? MOCK_PROOFS[0];
+    proof = MOCK_PROOFS.find((p) => p.id === id) ?? MOCK_PROOFS[0];
   }
 
   const explorerUrl = "https://explorer.pharos.network/tx/" + proof.txHash;
@@ -23,7 +25,7 @@ export default async function ProofPage({
 
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-full bg-[#1E1E2A] border border-[#2A2A38] flex items-center justify-center text-sm text-[#6EE7B7]">
-            {proof.creator.ensName?.[0].toUpperCase() ?? "?"}
+            {proof.creator.ensName?.[0].toUpperCase() ?? shortWallet(proof.creator.wallet)[0].toUpperCase()}
           </div>
           <div>
             <p className="text-sm text-white">
@@ -51,35 +53,44 @@ export default async function ProofPage({
           </div>
         )}
 
-        <div className="bg-[#0F0F17] border border-[#2A2A38] rounded-xl p-4 mb-6">
+        <div className="bg-[#0F0F17] border border-[#2A2A38] rounded-xl p-4 mb-4">
           <p className="text-xs text-[#5C5A72] mb-1">On-chain status</p>
           <div className="flex items-center justify-between">
-            <span className={proof.status === "anchored" ? "text-sm font-medium text-[#6EE7B7]" : proof.status === "pending" ? "text-sm font-medium text-yellow-400" : "text-sm font-medium text-[#5C5A72]"}>
+            <span className={
+              proof.status === "anchored"
+                ? "text-sm font-medium text-[#6EE7B7]"
+                : proof.status === "pending"
+                  ? "text-sm font-medium text-yellow-400"
+                  : "text-sm font-medium text-[#5C5A72]"
+            }>
               {proof.status.charAt(0).toUpperCase() + proof.status.slice(1)}
             </span>
             {proof.txHash && (
-              <a href={explorerUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-[#818CF8] hover:underline">
+              <a
+                href={explorerUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-[#818CF8] hover:underline"
+              >
                 View tx <ExternalLink className="w-3 h-3" />
               </a>
             )}
           </div>
         </div>
 
-        <div className="bg-[#0F0F17] border border-[#2A2A38] rounded-xl p-4 mb-6">
+        <div className="bg-[#0F0F17] border border-[#2A2A38] rounded-xl p-4 mb-4">
           <div className="flex items-center gap-2 mb-1">
             <ShieldCheck className="w-4 h-4 text-[#818CF8]" />
             <p className="text-sm text-white font-medium">
-              {proof.verificationCount} Verifications
+              {proof.verificationCount} Verification{proof.verificationCount !== 1 ? "s" : ""}
             </p>
           </div>
           <p className="text-xs text-[#5C5A72]">
-            Verified by {proof.verificationCount} unique wallets on-chain.
+            Verified by {proof.verificationCount} unique wallet{proof.verificationCount !== 1 ? "s" : ""}.
           </p>
         </div>
 
-        <button className="w-full border border-[#818CF8] text-[#818CF8] hover:bg-[#818CF8] hover:text-white font-semibold rounded-lg py-2.5 text-sm transition-all">
-          Verify this Proof
-        </button>
+        <VerifyButton proofId={proof.id} creatorWallet={proof.creator.wallet} />
 
       </div>
     </PageWrapper>
